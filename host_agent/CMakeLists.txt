@@ -59,6 +59,6 @@ set(sandpiper_ha_SOURCES
     src/tun_dev.c
     )
 
-add_executable(sandpiper_ha ${spha_SOURCES})
+add_executable(sandpiper_ha ${sandpiper_ha_SOURCES})
 target_link_libraries(sandpiper_ha ${proton_lib} ${dispatch_lib})
 
