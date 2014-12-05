@@ -1,4 +1,4 @@
 sandpiper
 =========
 
-Simple Connectivity for Docker Applications
+Simple Connectivity for Containerized Applications
