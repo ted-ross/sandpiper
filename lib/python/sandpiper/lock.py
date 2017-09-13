@@ -47,13 +47,11 @@ class Lock(MessagingHandler):
         return self.acquired_state
 
     def acquire(self):
-        print("acquire")
         if self.acquired_state:
             raise LockException("Lock already acquired")
         self.lock_receiver = self.reactor.create_receiver(self.connection, self.lock_name, handler=self)
 
     def release(self):
-        print("release")
         if not self.acquired_state:
             raise LockException("Lock not acquired")
         self.acquired_state = False
