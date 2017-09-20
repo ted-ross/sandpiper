@@ -36,7 +36,7 @@ class IncrementValue(MessagingHandler):
 
     def on_service_ready(self, event):
         if not self.sent_get:
-            self.client.request({'opcode':'GET'}, user_context="Read")
+            self.client.request({'opcode':'GET'})
 
     def on_request_failed(self, event):
         pass

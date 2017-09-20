@@ -69,11 +69,11 @@ class Lock(MessagingHandler):
             new_event = ApplicationEvent("lock_failed")
             new_event.user_context = self.user_context
             new_event.error        = event.link.remote_condition
-            self.event.trigger(new_event)
+            self.events.trigger(new_event)
 
     def on_link_closed(self, event):
         if event.receiver == self.lock_receiver and self.acquired_state:
             self.acquired_state = False
             new_event = ApplicationEvent("lock_released")
             new_event.user_context = self.user_context
-            self.event.trigger(new_event)
+            self.events.trigger(new_event)

@@ -31,8 +31,8 @@ class ValueStore(MessagingHandler):
 
     def on_start(self, event):
         self.container = event.container
-        self.conn = self.container.connect(self.bus_address)
-        self.server = RequestServer(self.container, self.conn, self.service_address)
+        self.conn      = self.container.connect(self.bus_address)
+        self.server    = RequestServer(self.container, self.conn, self.service_address)
 
     def on_request(self, event):
         try:

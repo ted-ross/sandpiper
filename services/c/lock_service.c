@@ -56,6 +56,7 @@ typedef struct app_data_t {
     const char    *host;
     const char    *port;
     const char    *container_id;
+    const char    *prefix;
     pn_proactor_t *proactor;
     lock_list_t    locks;
 } app_data_t;
@@ -69,7 +70,7 @@ static lock_t *spls_find_lock(app_data_t *app, const char *name)
         lock = DEQ_NEXT(lock);
 
     if (!lock) {
-        printf("Creating new lock: %s\n", name);
+        //printf("Creating new lock: %s\n", name);
         lock = NEW(lock_t);
         ZERO(lock);
         lock->name = (char*) malloc(strlen(name) + 1);
@@ -96,11 +97,11 @@ static bool spls_link_attached(app_data_t *app, pn_link_t *link, const char *nam
     lock_t *lock = spls_find_lock(app, name);
 
     if (!lock->current_link) {
-        printf("Lock acquired: %s\n", name);
+        //printf("Lock acquired: %s\n", name);
         lock->current_link = link;
         return true;
     } else {
-        printf("Lock deferred: %s\n", name);
+        //printf("Lock deferred: %s\n", name);
         spls_add_link(lock, link);
     }
 
@@ -140,13 +141,28 @@ static pn_link_t *spls_link_detached(app_data_t *app, pn_link_t *link, const cha
 
     if (lock->current_link == link) {
         lock->current_link = spls_get_next_link(lock);
-        printf("Lock %s: %s\n", lock->current_link ? "transferred" : "released", name);
+        //printf("Lock %s: %s\n", lock->current_link ? "transferred" : "released", name);
         return lock->current_link;
     }
 
     spls_remove_link(lock, link);
     return 0;
 }
+
+
+static void spls_set_connection_properties(app_data_t* app, pn_data_t *properties)
+{
+    if (pn_data_type(properties) == PN_INVALID) {
+        pn_data_put_map(properties);
+        pn_data_enter(properties);
+        pn_data_put_symbol(properties, pn_bytes(22, "qd.link-route-prefixes"));
+        pn_data_put_list(properties);
+        pn_data_enter(properties);
+        pn_data_put_string(properties, pn_bytes(strlen(app->prefix), app->prefix));
+        pn_data_exit(properties);
+        pn_data_exit(properties);
+    }
+ }
 
 
 /* Returns true to continue, false if finished */
@@ -157,6 +173,7 @@ static bool handle(app_data_t* app, pn_event_t* event)
     case PN_CONNECTION_INIT: {
         pn_connection_t *c = pn_event_connection(event);
         pn_connection_set_container(c, app->container_id);
+        spls_set_connection_properties(app, pn_connection_properties(c));
         pn_connection_open(c);
         break;
     }
@@ -259,8 +276,9 @@ int main(int argc, char **argv)
 
     int i = 0;
     app->container_id = argv[i++];   /* Should be unique */
-    app->host = (argc > 1) ? argv[i++] : "";
-    app->port = (argc > 1) ? argv[i++] : "amqp";
+    app->host         = (argc > i) ? argv[i++] : "";
+    app->port         = (argc > i) ? argv[i++] : "amqp";
+    app->prefix       = (argc > i) ? argv[i++] : "lock.";
 
     app->proactor = pn_proactor();
     char addr[PN_MAX_ADDR];

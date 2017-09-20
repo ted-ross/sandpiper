@@ -35,19 +35,23 @@ class IncrementValueLock(MessagingHandler):
         self.conn      = self.container.connect(self.bus_address)
         self.client    = RequestClient(self.container, self.conn, self.service_address)
         self.lock      = Lock(self.container, self.conn, self.lock_name)
-        self.sent_get  = False
+        self.started   = False
         self.lock_held = False
 
     def on_service_ready(self, event):
-        if not self.sent_get:
+        if not self.started:
+            self.started = True
             self.lock.acquire()
 
     def on_lock_acquired(self, event):
         self.lock_held = True
-        self.client.request({'opcode':'GET'}, user_context="Read")
+        self.client.request({'opcode':'GET'})
 
     def on_lock_failed(self, event):
         print("Lock Failed")
+        self.client.stop()
+        self.lock.destroy()
+        self.conn.close()
 
     def on_lock_released(self, event):
         self.lock_held = False
@@ -56,18 +60,27 @@ class IncrementValueLock(MessagingHandler):
         pass
 
     def on_response(self, event):
+        done = False
         try:
             props = event.properties
             if props['opcode'] == 'GET':
-                self.client.request({'opcode':'SET', 'value':(props['value'] + 1)})
+                if self.lock_held:
+                    self.client.request({'opcode':'SET', 'value':(props['value'] + 1)})
+                else:
+                    print("Aborted sequence: lock was dropped")
+                    done = True
             elif props['opcode'] == 'SET':
                 print("Value set to %d" % props['value'])
                 self.lock.release()
-                self.lock.destroy()
-                self.client.stop()
-                self.conn.close()
+                done = True
+
         except Exception, e:
             print("EXCEPTION: %r" % e)
+
+        if done:
+            self.lock.destroy()
+            self.client.stop()
+            self.conn.close()
 
 
 Container(IncrementValueLock("127.0.0.1:5672", "counterValue", "mutex.counterValue")).run()
